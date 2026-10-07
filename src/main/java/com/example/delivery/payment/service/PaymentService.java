@@ -8,6 +8,7 @@ import com.example.delivery.payment.dto.PaymentRequest;
 import com.example.delivery.payment.dto.PaymentResponse;
 import com.example.delivery.payment.entity.Payment;
 import com.example.delivery.payment.repository.PaymentRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,9 +27,8 @@ public class PaymentService {
      */
     @Transactional
     public PaymentResponse pay(Long memberId, Long orderId, PaymentRequest request) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new NotFoundException("주문을 찾을 수 없습니다."));
-        if (!order.getCustomer().getId().equals(memberId)) {
+        Order order = findOrder(orderId);
+        if (!isOrderedBy(order, memberId)) {
             throw new ForbiddenException("본인 주문만 결제할 수 있습니다.");
         }
 
@@ -37,5 +37,26 @@ public class PaymentService {
         // 결제 금액은 요청이 아니라 주문에 저장된 totalAmount를 사용한다.
         Payment payment = paymentRepository.save(new Payment(order, request.method()));
         return PaymentResponse.from(payment);
+    }
+
+    // 본인 주문의 결제 기록만 조회한다. 결제하지 않은 주문이면 빈 목록을 반환한다.
+    public List<PaymentResponse> getPayments(Long memberId, Long orderId) {
+        Order order = findOrder(orderId);
+        if (!isOrderedBy(order, memberId)) {
+            throw new ForbiddenException("본인 주문의 결제 기록만 조회할 수 있습니다.");
+        }
+
+        return paymentRepository.findAllByOrder_Id(order.getId()).stream()
+                .map(PaymentResponse::from)
+                .toList();
+    }
+
+    private Order findOrder(Long orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("주문을 찾을 수 없습니다."));
+    }
+
+    private boolean isOrderedBy(Order order, Long memberId) {
+        return order.getCustomer().getId().equals(memberId);
     }
 }
