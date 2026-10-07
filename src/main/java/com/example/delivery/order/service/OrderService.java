@@ -50,10 +50,24 @@ public class OrderService {
                 .toList();
     }
 
+    // CUSTOMER는 본인 주문, OWNER는 본인 메뉴에 들어온 주문만 조회할 수 있다.
+    public OrderResponse getOrder(AuthMember authMember, Long orderId) {
+        Order order = findOrder(orderId);
+        boolean accessible = switch (authMember.role()) {
+            case CUSTOMER -> isOrderedBy(order, authMember.id());
+            case OWNER -> isMenuOwnedBy(order, authMember.id());
+        };
+        if (!accessible) {
+            throw new ForbiddenException("본인 주문 또는 본인 메뉴의 주문만 조회할 수 있습니다.");
+        }
+
+        return OrderResponse.from(order);
+    }
+
     @Transactional
     public OrderResponse cancelOrder(Long memberId, Long orderId) {
         Order order = findOrder(orderId);
-        if (!order.getCustomer().getId().equals(memberId)) {
+        if (!isOrderedBy(order, memberId)) {
             throw new ForbiddenException("본인 주문만 취소할 수 있습니다.");
         }
 
@@ -66,8 +80,7 @@ public class OrderService {
     @Transactional
     public OrderResponse changeOrderStatus(Long memberId, Long orderId, OrderStatusRequest request) {
         Order order = findOrder(orderId);
-        // 메뉴가 삭제되었더라도 기존 주문은 처리할 수 있도록 메뉴의 deleted 여부는 확인하지 않는다.
-        if (!order.getMenu().getOwner().getId().equals(memberId)) {
+        if (!isMenuOwnedBy(order, memberId)) {
             throw new ForbiddenException("본인 메뉴의 주문만 변경할 수 있습니다.");
         }
 
@@ -83,5 +96,14 @@ public class OrderService {
     private Order findOrder(Long orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("주문을 찾을 수 없습니다."));
+    }
+
+    private boolean isOrderedBy(Order order, Long memberId) {
+        return order.getCustomer().getId().equals(memberId);
+    }
+
+    // 메뉴가 삭제되었더라도 기존 주문은 처리할 수 있도록 메뉴의 deleted 여부는 확인하지 않는다.
+    private boolean isMenuOwnedBy(Order order, Long memberId) {
+        return order.getMenu().getOwner().getId().equals(memberId);
     }
 }
