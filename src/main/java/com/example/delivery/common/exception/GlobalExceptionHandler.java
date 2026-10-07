@@ -3,6 +3,7 @@ package com.example.delivery.common.exception;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -43,6 +44,21 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, "요청 본문의 JSON 형식이나 값이 올바르지 않습니다.");
+        return handleExceptionInternal(ex, problem, headers, status, request);
+    }
+
+    // 경로 변수·요청 파라미터의 타입 변환 실패 (예: /api/menus/abc)
+    @Override
+    protected ResponseEntity<Object> handleTypeMismatch(
+            TypeMismatchException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        String name = ex.getPropertyName();
+        Class<?> requiredType = ex.getRequiredType();
+
+        String detail = (requiredType == Long.class || requiredType == Integer.class)
+                ? name + "는 정수로 입력해야 합니다."
+                : name + "의 형식이 올바르지 않습니다.";
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
         return handleExceptionInternal(ex, problem, headers, status, request);
     }
 
