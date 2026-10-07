@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: delivery
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/delivery
+    username: delivery
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      # 로컬 학습 환경 전용
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+jwt:
+  # Base64로 인코딩한 32바이트(256비트) 이상의 비밀키
+  secret: ${JWT_SECRET}
+  # 액세스 토큰 만료 시간(밀리초), 기본 1시간
+  expiration-ms: 3600000

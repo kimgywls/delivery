@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:18
+    container_name: delivery-postgres
+    environment:
+      POSTGRES_DB: delivery
+      POSTGRES_USER: delivery
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+    ports:
+      - "5432:5432"
+    volumes:
+      # PostgreSQL 18 이미지부터 데이터 볼륨 경로가 /var/lib/postgresql 로 변경됨
+      - delivery-postgres-data:/var/lib/postgresql
+
+volumes:
+  delivery-postgres-data:
