@@ -23,6 +23,7 @@ import com.example.delivery.store.entity.Store;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -98,11 +99,15 @@ public class OrderService {
             throw new ForbiddenException("본인 주문만 취소할 수 있습니다.");
         }
 
-        boolean paid = order.getStatus() == OrderStatus.PAID;
-        order.cancel(LocalDateTime.now());   // 상태·시간 규칙을 통과하지 못하면 409
-        if (paid) {
-            cancelCompletedPayment(order);
-        }
+        // 모든 검사를 통과한 뒤에 주문·결제 상태를 바꾼다.
+        LocalDateTime now = LocalDateTime.now();
+        order.validateCancelable(now);       // 상태·시간 규칙을 통과하지 못하면 409
+        Optional<Payment> completedPayment = order.getStatus() == OrderStatus.PAID
+                ? Optional.of(findCompletedPayment(order))
+                : Optional.empty();          // REQUESTED 주문은 결제 기록을 확인하지 않는다
+
+        order.cancel(now);
+        completedPayment.ifPresent(Payment::cancel);
         // 응답에 갱신된 updatedAt을 담기 위해 DTO 변환 전에 flush해 @LastModifiedDate를 먼저 반영한다.
         orderRepository.flush();
         return OrderResponse.from(order);
@@ -115,20 +120,24 @@ public class OrderService {
             throw new ForbiddenException("본인 메뉴의 주문만 거절할 수 있습니다.");
         }
 
-        order.reject();                      // PAID가 아니면 409
-        cancelCompletedPayment(order);       // 결제 후 취소와 같은 규칙으로 완료된 결제 1건을 CANCELED로 변경
+        // 모든 검사를 통과한 뒤에 주문·결제 상태를 바꾼다. 손님 취소의 5분 제한은 적용하지 않는다.
+        order.validateRejectable();          // PAID가 아니면 409
+        Payment completedPayment = findCompletedPayment(order);
+
+        order.reject();
+        completedPayment.cancel();
         orderRepository.flush();
         return OrderResponse.from(order);
     }
 
     // PAID 주문에는 COMPLETED 결제가 정확히 1건 있어야 한다. 아니면 데이터 오류로 보고 전체를 롤백한다.
-    private void cancelCompletedPayment(Order order) {
+    private Payment findCompletedPayment(Order order) {
         List<Payment> payments = paymentRepository.findAllByOrder_IdAndStatus(order.getId(), PaymentStatus.COMPLETED);
         if (payments.size() != 1) {
             throw new IllegalStateException(
                     "결제 완료 주문의 완료된 결제 기록이 1건이 아닙니다. orderId=" + order.getId() + ", count=" + payments.size());
         }
-        payments.getFirst().cancel();
+        return payments.getFirst();
     }
 
     @Transactional

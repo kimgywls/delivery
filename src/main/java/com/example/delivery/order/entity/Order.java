@@ -97,18 +97,25 @@ public class Order extends BaseEntity {
     }
 
     /**
-     * 상태(REQUESTED 또는 PAID)를 먼저 확인한 뒤, 생성 시각부터 5분 이내인지 확인한다.
-     * 정확히 5분인 시점까지는 허용한다. now는 호출하는 쪽에서 한 번 구해 전달한다.
      * PAID 주문의 결제 기록 취소는 이 메서드를 호출한 Service가 같은 트랜잭션에서 처리한다.
      */
     public void cancel(LocalDateTime now) {
+        validateCancelable(now);
+        this.status = OrderStatus.CANCELED;
+    }
+
+    /**
+     * 취소할 수 있는지 검사만 하고 상태는 바꾸지 않는다.
+     * 상태(REQUESTED 또는 PAID)를 먼저 확인한 뒤, 생성 시각부터 5분 이내인지 확인한다.
+     * 정확히 5분인 시점까지는 허용한다. now는 호출하는 쪽에서 한 번 구해 전달한다.
+     */
+    public void validateCancelable(LocalDateTime now) {
         if (this.status != OrderStatus.REQUESTED && this.status != OrderStatus.PAID) {
             throw new InvalidOrderStatusException(this.status, OrderStatus.CANCELED);
         }
         if (now.isAfter(getCreatedAt().plus(CANCEL_TIME_LIMIT))) {
             throw new OrderCancelTimeExpiredException();
         }
-        this.status = OrderStatus.CANCELED;
     }
 
     public void accept() {
@@ -124,10 +131,15 @@ public class Order extends BaseEntity {
      * 결제 기록 취소는 이 메서드를 호출한 Service가 같은 트랜잭션에서 처리한다.
      */
     public void reject() {
+        validateRejectable();
+        this.status = OrderStatus.REJECTED;
+    }
+
+    // 거절할 수 있는지 검사만 하고 상태는 바꾸지 않는다.
+    public void validateRejectable() {
         if (this.status != OrderStatus.PAID) {
             throw new InvalidOrderStatusException("결제 완료 상태의 주문만 거절할 수 있습니다.");
         }
-        this.status = OrderStatus.REJECTED;
     }
 
     private void changeStatus(OrderStatus expected, OrderStatus next) {
