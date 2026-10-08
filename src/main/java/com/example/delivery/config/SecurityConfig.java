@@ -60,6 +60,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/orders").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/orders/{orderId}/cancel").hasRole(CUSTOMER)
                         .requestMatchers(HttpMethod.PATCH, "/api/orders/{orderId}/status").hasRole(OWNER)
+                        .requestMatchers(HttpMethod.PATCH, "/api/orders/{orderId}/reject").hasRole(OWNER)
                         .requestMatchers(HttpMethod.POST, "/api/orders/{orderId}/payments").hasRole(CUSTOMER)
                         .requestMatchers(HttpMethod.GET, "/api/orders/{orderId}/payments").hasRole(CUSTOMER)
                         .anyRequest().authenticated())

@@ -87,6 +87,19 @@ public class OrderService {
         return OrderResponse.from(order);
     }
 
+    @Transactional
+    public OrderResponse rejectOrder(Long memberId, Long orderId) {
+        Order order = findOrder(orderId);
+        if (!isMenuOwnedBy(order, memberId)) {
+            throw new ForbiddenException("본인 메뉴의 주문만 거절할 수 있습니다.");
+        }
+
+        order.reject();                      // PAID가 아니면 409
+        cancelCompletedPayment(order);       // 결제 후 취소와 같은 규칙으로 완료된 결제 1건을 CANCELED로 변경
+        orderRepository.flush();
+        return OrderResponse.from(order);
+    }
+
     // PAID 주문에는 COMPLETED 결제가 정확히 1건 있어야 한다. 아니면 데이터 오류로 보고 전체를 롤백한다.
     private void cancelCompletedPayment(Order order) {
         List<Payment> payments = paymentRepository.findAllByOrder_IdAndStatus(order.getId(), PaymentStatus.COMPLETED);

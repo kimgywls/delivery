@@ -49,6 +49,12 @@ public class OrderController {
         return ResponseEntity.ok(orderService.cancelOrder(authMember.id(), orderId));
     }
 
+    @PatchMapping("/{orderId}/reject")
+    public ResponseEntity<OrderResponse> rejectOrder(@AuthenticationPrincipal AuthMember authMember,
+                                                     @PathVariable Long orderId) {
+        return ResponseEntity.ok(orderService.rejectOrder(authMember.id(), orderId));
+    }
+
     @PatchMapping("/{orderId}/status")
     public ResponseEntity<OrderResponse> changeOrderStatus(@AuthenticationPrincipal AuthMember authMember,
                                                            @PathVariable Long orderId,

@@ -92,6 +92,17 @@ public class Order extends BaseEntity {
         changeStatus(OrderStatus.ACCEPTED, OrderStatus.DELIVERED);
     }
 
+    /**
+     * 사장님의 주문 거절. 결제 완료(PAID) 주문만 거절할 수 있고, 손님 취소의 5분 제한은 적용하지 않는다.
+     * 결제 기록 취소는 이 메서드를 호출한 Service가 같은 트랜잭션에서 처리한다.
+     */
+    public void reject() {
+        if (this.status != OrderStatus.PAID) {
+            throw new InvalidOrderStatusException("결제 완료 상태의 주문만 거절할 수 있습니다.");
+        }
+        this.status = OrderStatus.REJECTED;
+    }
+
     private void changeStatus(OrderStatus expected, OrderStatus next) {
         validateStatus(expected, next);
         this.status = next;
