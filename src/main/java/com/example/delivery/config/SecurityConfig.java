@@ -7,6 +7,7 @@ import com.example.delivery.security.JwtAccessDeniedHandler;
 import com.example.delivery.security.JwtAuthenticationEntryPoint;
 import com.example.delivery.security.JwtAuthenticationFilter;
 import com.example.delivery.security.JwtProvider;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -52,6 +53,9 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
+                        // 오류 처리를 위해 /error로 다시 전달(ERROR dispatch)될 때 원래 상태 코드가 401로 바뀌지 않게 한다.
+                        // 클라이언트가 /error를 직접 호출하는 요청(REQUEST dispatch)은 여기에 해당하지 않는다.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(PUBLIC_REQUESTS).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/menus").hasRole(OWNER)
                         .requestMatchers(HttpMethod.PUT, "/api/menus/{menuId}").hasRole(OWNER)

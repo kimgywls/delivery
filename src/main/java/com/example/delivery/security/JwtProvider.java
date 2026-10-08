@@ -4,6 +4,7 @@ import com.example.delivery.member.entity.Member;
 import com.example.delivery.member.entity.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import java.util.Date;
@@ -49,9 +50,14 @@ public class JwtProvider {
                 .parseSignedClaims(token)
                 .getPayload();
 
-        return new AuthMember(
-                Long.valueOf(claims.getSubject()),
-                claims.get(USERNAME_CLAIM, String.class),
-                Role.valueOf(claims.get(ROLE_CLAIM, String.class)));
+        String subject = claims.getSubject();
+        String username = claims.get(USERNAME_CLAIM, String.class);
+        String role = claims.get(ROLE_CLAIM, String.class);
+        // 서명이 올바르더라도 필수 claim이 없으면 유효하지 않은 토큰으로 처리한다(필터에서 401).
+        if (subject == null || username == null || role == null) {
+            throw new MalformedJwtException("필수 claim이 없는 토큰입니다.");
+        }
+
+        return new AuthMember(Long.valueOf(subject), username, Role.valueOf(role));
     }
 }
