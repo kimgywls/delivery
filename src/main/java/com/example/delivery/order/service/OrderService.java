@@ -12,6 +12,7 @@ import com.example.delivery.order.dto.OrderStatusRequest;
 import com.example.delivery.order.entity.Order;
 import com.example.delivery.order.repository.OrderRepository;
 import com.example.delivery.security.AuthMember;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -71,7 +72,7 @@ public class OrderService {
             throw new ForbiddenException("본인 주문만 취소할 수 있습니다.");
         }
 
-        order.cancel();
+        order.cancel(LocalDateTime.now());
         // 응답에 갱신된 updatedAt을 담기 위해 DTO 변환 전에 flush해 @LastModifiedDate를 먼저 반영한다.
         orderRepository.flush();
         return OrderResponse.from(order);

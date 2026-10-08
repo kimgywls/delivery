@@ -2,6 +2,7 @@ package com.example.delivery.order.entity;
 
 import com.example.delivery.common.BaseEntity;
 import com.example.delivery.common.exception.InvalidOrderStatusException;
+import com.example.delivery.common.exception.OrderCancelTimeExpiredException;
 import com.example.delivery.member.entity.Member;
 import com.example.delivery.menu.entity.Menu;
 import jakarta.persistence.Column;
@@ -15,6 +16,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -24,6 +27,9 @@ import lombok.NoArgsConstructor;
 @Table(name = "orders")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Order extends BaseEntity {
+
+    // 주문 생성 후 취소할 수 있는 시간
+    private static final Duration CANCEL_TIME_LIMIT = Duration.ofMinutes(5);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -63,8 +69,16 @@ public class Order extends BaseEntity {
         changeStatus(OrderStatus.REQUESTED, OrderStatus.PAID);
     }
 
-    public void cancel() {
-        changeStatus(OrderStatus.REQUESTED, OrderStatus.CANCELED);
+    /**
+     * 상태(REQUESTED)를 먼저 확인한 뒤, 생성 시각부터 5분 이내인지 확인한다.
+     * 정확히 5분인 시점까지는 허용한다. now는 호출하는 쪽에서 한 번 구해 전달한다.
+     */
+    public void cancel(LocalDateTime now) {
+        validateStatus(OrderStatus.REQUESTED, OrderStatus.CANCELED);
+        if (now.isAfter(getCreatedAt().plus(CANCEL_TIME_LIMIT))) {
+            throw new OrderCancelTimeExpiredException();
+        }
+        this.status = OrderStatus.CANCELED;
     }
 
     public void accept() {
@@ -76,9 +90,13 @@ public class Order extends BaseEntity {
     }
 
     private void changeStatus(OrderStatus expected, OrderStatus next) {
+        validateStatus(expected, next);
+        this.status = next;
+    }
+
+    private void validateStatus(OrderStatus expected, OrderStatus next) {
         if (this.status != expected) {
             throw new InvalidOrderStatusException(this.status, next);
         }
-        this.status = next;
     }
 }

@@ -98,7 +98,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
-    @ExceptionHandler({DuplicateUsernameException.class, InvalidOrderStatusException.class})
+    @ExceptionHandler({DuplicateUsernameException.class, InvalidOrderStatusException.class,
+            OrderCancelTimeExpiredException.class})
     public ProblemDetail handleConflict(RuntimeException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
     }
