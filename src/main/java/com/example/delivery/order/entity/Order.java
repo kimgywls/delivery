@@ -4,7 +4,8 @@ import com.example.delivery.common.BaseEntity;
 import com.example.delivery.common.exception.InvalidOrderStatusException;
 import com.example.delivery.common.exception.OrderCancelTimeExpiredException;
 import com.example.delivery.member.entity.Member;
-import com.example.delivery.menu.entity.Menu;
+import com.example.delivery.store.entity.Store;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,9 +16,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -39,12 +45,16 @@ public class Order extends BaseEntity {
     @JoinColumn(name = "customer_id", nullable = false)
     private Member customer;
 
+    // 주문은 한 가게에만 한다. 사장님 소유권은 order.store.owner로 확인한다.
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "menu_id", nullable = false)
-    private Menu menu;
+    @JoinColumn(name = "store_id", nullable = false)
+    private Store store;
 
-    @Column(nullable = false)
-    private Integer quantity;
+    // 외래키(order_items.order_id)는 OrderItem이 관리한다. 주문 생성 시 상품도 함께 저장(PERSIST)한다.
+    // 주문·결제 기록은 지우지 않으므로 REMOVE와 orphanRemoval은 두지 않는다.
+    @OneToMany(mappedBy = "order", cascade = CascadeType.PERSIST)
+    @OrderBy("id ASC")
+    private List<OrderItem> items = new ArrayList<>();
 
     @Column(nullable = false)
     private Long totalAmount;
@@ -56,13 +66,30 @@ public class Order extends BaseEntity {
     @Column(nullable = false, length = 20)
     private OrderStatus status;
 
-    public Order(Member customer, Menu menu, Integer quantity, String deliveryAddress) {
+    /**
+     * 한 가게의 상품 1개 이상으로 주문을 만든다. 총액은 상품 금액의 합으로 계산한다.
+     * 주문이 만들어진 뒤에는 상품을 추가하지 않는다(결제 금액이 주문 총액이므로).
+     */
+    public Order(Member customer, Store store, List<OrderItem> items, String deliveryAddress) {
+        if (items == null || items.isEmpty()) {
+            throw new IllegalArgumentException("주문 상품은 1개 이상이어야 합니다.");
+        }
         this.customer = customer;
-        this.menu = menu;
-        this.quantity = quantity;
-        this.totalAmount = menu.getPrice() * quantity;
+        this.store = store;
+        this.totalAmount = 0L;
+        items.forEach(this::addItem);
         this.deliveryAddress = deliveryAddress;
         this.status = OrderStatus.REQUESTED;
+    }
+
+    // 양쪽 객체 참조를 함께 설정하고 총액에 반영한다.
+    private void addItem(OrderItem item) {
+        if (!Objects.equals(item.getMenu().getStore().getId(), store.getId())) {
+            throw new IllegalArgumentException("다른 가게의 메뉴는 같은 주문에 담을 수 없습니다.");
+        }
+        item.assignOrder(this);
+        this.items.add(item);
+        this.totalAmount += item.subtotal();
     }
 
     public void pay() {

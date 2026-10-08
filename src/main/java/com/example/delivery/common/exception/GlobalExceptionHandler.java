@@ -77,8 +77,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problem, headers, status, request);
     }
 
-    @ExceptionHandler(InvalidPasswordException.class)
-    public ProblemDetail handleInvalidPassword(InvalidPasswordException e) {
+    @ExceptionHandler({InvalidPasswordException.class, MixedStoreOrderException.class})
+    public ProblemDetail handleBadRequest(RuntimeException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
     }
 
