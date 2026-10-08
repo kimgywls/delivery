@@ -57,6 +57,8 @@ public class SecurityConfig {
                         // 클라이언트가 /error를 직접 호출하는 요청(REQUEST dispatch)은 여기에 해당하지 않는다.
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(PUBLIC_REQUESTS).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/stores").hasRole(OWNER)
+                        .requestMatchers(HttpMethod.GET, "/api/stores/mine").hasRole(OWNER)
                         .requestMatchers(HttpMethod.POST, "/api/menus").hasRole(OWNER)
                         .requestMatchers(HttpMethod.PUT, "/api/menus/{menuId}").hasRole(OWNER)
                         .requestMatchers(HttpMethod.DELETE, "/api/menus/{menuId}").hasRole(OWNER)

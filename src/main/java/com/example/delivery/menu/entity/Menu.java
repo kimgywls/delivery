@@ -1,7 +1,7 @@
 package com.example.delivery.menu.entity;
 
 import com.example.delivery.common.BaseEntity;
-import com.example.delivery.member.entity.Member;
+import com.example.delivery.store.entity.Store;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -25,9 +25,10 @@ public class Menu extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // 메뉴의 사장님은 가게를 통해 찾는다(menu.store.owner).
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "owner_id", nullable = false)
-    private Member owner;
+    @JoinColumn(name = "store_id", nullable = false)
+    private Store store;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -41,8 +42,8 @@ public class Menu extends BaseEntity {
     @Column(nullable = false)
     private boolean deleted = false;
 
-    public Menu(Member owner, String name, Long price, String description) {
-        this.owner = owner;
+    public Menu(Store store, String name, Long price, String description) {
+        this.store = store;
         this.name = name;
         this.price = price;
         this.description = description;

@@ -48,7 +48,7 @@ public class OrderService {
     public List<OrderResponse> getOrders(AuthMember authMember) {
         List<Order> orders = switch (authMember.role()) {
             case CUSTOMER -> orderRepository.findAllByCustomer_Id(authMember.id());
-            case OWNER -> orderRepository.findAllByMenu_Owner_Id(authMember.id());
+            case OWNER -> orderRepository.findAllByMenu_Store_Owner_Id(authMember.id());
         };
 
         return orders.stream()
@@ -137,6 +137,6 @@ public class OrderService {
 
     // 메뉴가 삭제되었더라도 기존 주문은 처리할 수 있도록 메뉴의 deleted 여부는 확인하지 않는다.
     private boolean isMenuOwnedBy(Order order, Long memberId) {
-        return order.getMenu().getOwner().getId().equals(memberId);
+        return order.getMenu().getStore().getOwner().getId().equals(memberId);
     }
 }

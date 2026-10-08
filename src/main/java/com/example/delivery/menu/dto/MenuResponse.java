@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 public record MenuResponse(
         Long id,
         Long ownerId,
+        Long storeId,
         String name,
         Long price,
         String description,
@@ -22,7 +23,8 @@ public record MenuResponse(
     public static MenuResponse from(Menu menu) {
         return new MenuResponse(
                 menu.getId(),
-                menu.getOwner().getId(),
+                menu.getStore().getOwner().getId(),
+                menu.getStore().getId(),
                 menu.getName(),
                 menu.getPrice(),
                 menu.getDescription(),

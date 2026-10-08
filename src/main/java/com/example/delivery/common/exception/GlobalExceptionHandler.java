@@ -99,7 +99,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     }
 
     @ExceptionHandler({DuplicateUsernameException.class, InvalidOrderStatusException.class,
-            OrderCancelTimeExpiredException.class})
+            OrderCancelTimeExpiredException.class, StoreAlreadyExistsException.class, StoreRequiredException.class})
     public ProblemDetail handleConflict(RuntimeException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
     }

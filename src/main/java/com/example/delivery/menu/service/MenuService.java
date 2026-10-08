@@ -2,13 +2,14 @@ package com.example.delivery.menu.service;
 
 import com.example.delivery.common.exception.ForbiddenException;
 import com.example.delivery.common.exception.NotFoundException;
-import com.example.delivery.member.entity.Member;
-import com.example.delivery.member.repository.MemberRepository;
+import com.example.delivery.common.exception.StoreRequiredException;
 import com.example.delivery.menu.dto.MenuPageResponse;
 import com.example.delivery.menu.dto.MenuRequest;
 import com.example.delivery.menu.dto.MenuResponse;
 import com.example.delivery.menu.entity.Menu;
 import com.example.delivery.menu.repository.MenuRepository;
+import com.example.delivery.store.entity.Store;
+import com.example.delivery.store.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,14 +26,15 @@ public class MenuService {
     private static final Sort LATEST_FIRST = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
 
     private final MenuRepository menuRepository;
-    private final MemberRepository memberRepository;
+    private final StoreRepository storeRepository;
 
     @Transactional
     public MenuResponse createMenu(Long memberId, MenuRequest request) {
-        Member owner = memberRepository.findById(memberId)
-                .orElseThrow(() -> new NotFoundException("회원을 찾을 수 없습니다."));
+        // 메뉴는 인증된 사장님의 가게에 등록한다. 가게가 없으면 409.
+        Store store = storeRepository.findByOwner_Id(memberId)
+                .orElseThrow(StoreRequiredException::new);
 
-        Menu menu = new Menu(owner, request.name(), request.price(), request.description());
+        Menu menu = new Menu(store, request.name(), request.price(), request.description());
         return MenuResponse.from(menuRepository.save(menu));
     }
 
@@ -72,7 +74,7 @@ public class MenuService {
     }
 
     private void validateOwner(Menu menu, Long memberId) {
-        if (!menu.getOwner().getId().equals(memberId)) {
+        if (!menu.getStore().getOwner().getId().equals(memberId)) {
             throw new ForbiddenException("본인 메뉴만 수정·삭제할 수 있습니다.");
         }
     }
