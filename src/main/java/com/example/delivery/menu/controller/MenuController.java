@@ -1,11 +1,13 @@
 package com.example.delivery.menu.controller;
 
+import com.example.delivery.menu.dto.MenuPageResponse;
 import com.example.delivery.menu.dto.MenuRequest;
 import com.example.delivery.menu.dto.MenuResponse;
 import com.example.delivery.menu.service.MenuService;
 import com.example.delivery.security.AuthMember;
 import jakarta.validation.Valid;
-import java.util.List;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -32,9 +35,18 @@ public class MenuController {
         return ResponseEntity.status(HttpStatus.CREATED).body(menuService.createMenu(authMember.id(), request));
     }
 
+    // 파라미터에 직접 붙인 제약은 Spring MVC의 메서드 검증으로 검사되고, 실패하면 HandlerMethodValidationException(400)이 발생한다.
     @GetMapping
-    public ResponseEntity<List<MenuResponse>> getMenus() {
-        return ResponseEntity.ok(menuService.getMenus());
+    public ResponseEntity<MenuPageResponse> getMenus(
+            @RequestParam(defaultValue = "0")
+            @Min(value = 0, message = "page는 0 이상이어야 합니다.")
+            Integer page,
+
+            @RequestParam(defaultValue = "10")
+            @Min(value = 1, message = "size는 1 이상 100 이하여야 합니다.")
+            @Max(value = 100, message = "size는 1 이상 100 이하여야 합니다.")
+            Integer size) {
+        return ResponseEntity.ok(menuService.getMenus(page, size));
     }
 
     @GetMapping("/{menuId}")

@@ -4,12 +4,15 @@ import com.example.delivery.common.exception.ForbiddenException;
 import com.example.delivery.common.exception.NotFoundException;
 import com.example.delivery.member.entity.Member;
 import com.example.delivery.member.repository.MemberRepository;
+import com.example.delivery.menu.dto.MenuPageResponse;
 import com.example.delivery.menu.dto.MenuRequest;
 import com.example.delivery.menu.dto.MenuResponse;
 import com.example.delivery.menu.entity.Menu;
 import com.example.delivery.menu.repository.MenuRepository;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MenuService {
+
+    // 등록 시각 내림차순, 등록 시각이 같으면 id 내림차순
+    private static final Sort LATEST_FIRST = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
 
     private final MenuRepository menuRepository;
     private final MemberRepository memberRepository;
@@ -30,10 +36,10 @@ public class MenuService {
         return MenuResponse.from(menuRepository.save(menu));
     }
 
-    public List<MenuResponse> getMenus() {
-        return menuRepository.findAllByDeletedFalseOrderByIdAsc().stream()
-                .map(MenuResponse::from)
-                .toList();
+    // 삭제되지 않은 메뉴를 최신 등록순으로 DB에서 페이징 조회한다.
+    public MenuPageResponse getMenus(int page, int size) {
+        Page<Menu> menus = menuRepository.findAllByDeletedFalse(PageRequest.of(page, size, LATEST_FIRST));
+        return MenuPageResponse.from(menus.map(MenuResponse::from));
     }
 
     public MenuResponse getMenu(Long menuId) {
