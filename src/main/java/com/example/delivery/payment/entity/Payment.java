@@ -48,4 +48,14 @@ public class Payment extends BaseEntity {
         this.method = method;
         this.status = PaymentStatus.COMPLETED;
     }
+
+    /**
+     * 결제 기록을 취소 상태로 바꾼다. 실제 환불은 하지 않으며, 금액·수단·생성 시각은 그대로 남는다.
+     */
+    public void cancel() {
+        if (this.status != PaymentStatus.COMPLETED) {
+            throw new IllegalStateException("완료된 결제만 취소할 수 있습니다. paymentId=" + this.id);
+        }
+        this.status = PaymentStatus.CANCELED;
+    }
 }

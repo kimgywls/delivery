@@ -70,11 +70,14 @@ public class Order extends BaseEntity {
     }
 
     /**
-     * 상태(REQUESTED)를 먼저 확인한 뒤, 생성 시각부터 5분 이내인지 확인한다.
+     * 상태(REQUESTED 또는 PAID)를 먼저 확인한 뒤, 생성 시각부터 5분 이내인지 확인한다.
      * 정확히 5분인 시점까지는 허용한다. now는 호출하는 쪽에서 한 번 구해 전달한다.
+     * PAID 주문의 결제 기록 취소는 이 메서드를 호출한 Service가 같은 트랜잭션에서 처리한다.
      */
     public void cancel(LocalDateTime now) {
-        validateStatus(OrderStatus.REQUESTED, OrderStatus.CANCELED);
+        if (this.status != OrderStatus.REQUESTED && this.status != OrderStatus.PAID) {
+            throw new InvalidOrderStatusException(this.status, OrderStatus.CANCELED);
+        }
         if (now.isAfter(getCreatedAt().plus(CANCEL_TIME_LIMIT))) {
             throw new OrderCancelTimeExpiredException();
         }

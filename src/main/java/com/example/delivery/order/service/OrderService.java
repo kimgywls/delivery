@@ -10,7 +10,11 @@ import com.example.delivery.order.dto.OrderRequest;
 import com.example.delivery.order.dto.OrderResponse;
 import com.example.delivery.order.dto.OrderStatusRequest;
 import com.example.delivery.order.entity.Order;
+import com.example.delivery.order.entity.OrderStatus;
 import com.example.delivery.order.repository.OrderRepository;
+import com.example.delivery.payment.entity.Payment;
+import com.example.delivery.payment.entity.PaymentStatus;
+import com.example.delivery.payment.repository.PaymentRepository;
 import com.example.delivery.security.AuthMember;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +30,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final MemberRepository memberRepository;
     private final MenuRepository menuRepository;
+    private final PaymentRepository paymentRepository;
 
     @Transactional
     public OrderResponse createOrder(Long memberId, OrderRequest request) {
@@ -72,10 +77,24 @@ public class OrderService {
             throw new ForbiddenException("본인 주문만 취소할 수 있습니다.");
         }
 
-        order.cancel(LocalDateTime.now());
+        boolean paid = order.getStatus() == OrderStatus.PAID;
+        order.cancel(LocalDateTime.now());   // 상태·시간 규칙을 통과하지 못하면 409
+        if (paid) {
+            cancelCompletedPayment(order);
+        }
         // 응답에 갱신된 updatedAt을 담기 위해 DTO 변환 전에 flush해 @LastModifiedDate를 먼저 반영한다.
         orderRepository.flush();
         return OrderResponse.from(order);
+    }
+
+    // PAID 주문에는 COMPLETED 결제가 정확히 1건 있어야 한다. 아니면 데이터 오류로 보고 전체를 롤백한다.
+    private void cancelCompletedPayment(Order order) {
+        List<Payment> payments = paymentRepository.findAllByOrder_IdAndStatus(order.getId(), PaymentStatus.COMPLETED);
+        if (payments.size() != 1) {
+            throw new IllegalStateException(
+                    "결제 완료 주문의 완료된 결제 기록이 1건이 아닙니다. orderId=" + order.getId() + ", count=" + payments.size());
+        }
+        payments.getFirst().cancel();
     }
 
     @Transactional
